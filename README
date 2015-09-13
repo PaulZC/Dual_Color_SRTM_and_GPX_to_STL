@@ -1,0 +1,75 @@
+[This code is experimental! Your mileage may vary!!]
+
+Dual_Color_SRTM_and_GPX_to_STL builds on the code in SRTM_to_STL_1
+
+This code will convert NASA SRTM (1 arcsec) data and a GPX track/route file into two separate STL files which can be 3D printed in two colors - the idea being that the GPX route you followed can be printed as a second color, embedded in a 3D landscape created from NASA SRTM data.
+
+If you aren't interested in dual color printing, have a look at SRTM_to_STL_1 or SRTM_to_STL instead.
+
+The SRTMGL1 data can be downloaded from:
+http://earthexplorer.usgs.gov/
+Select the data set called
+NASA LPDAAC Collections \ NASA SRTM (SRTM 3) Collections \ NASA SRTM3 SRTMGL1
+
+The 1 arc-second data has a horizontal resolution of about 30m on the ground and is best suited for printing relatively small areas at maximum resolution. You can still join the hgt files together (with SRTM_Join.py) if the area you are interested in crosses file boundaries, but the software will then ask you to cut the data leaving 3601 x 3601 points.
+
+If you want to print large areas, you will probably be better off using "SRTM_to_STL". You can still use the 1 arc-second data, just use SRTM_resample.py to convert the 1 arc-second data files into 3 arc-second.
+
+To create a nice print of the summit of Everest with an approximation of the route followed by Tenzing Norgay and Edmond Hillary in 1953 in a second color:
+
+The 1953 route for the ascent of Everest is inspired by the map shown on page 9 of:
+http://www.rgs.org/nr/rdonlyres/22a09637-b5c9-4c44-8110-77126083ded9/0/everest53.pdf
+
+Everest straddles N27E086.hgt and N28E086.hgt, so use SRTM_Join.py to join the files together:
+python SRTM_Join.py N27E086.hgt N28E086.hgt
+The code will ask you which row you want to cut from. Enter "1800"
+You need to keep a note that the file now has a latitude offset of 0.5 degrees
+
+SRTM_to_NPZ.py then converts the hgt file into numpy .npz format:
+python SRTM_to_NPZ.py N27E086_join.hgt
+Remember to enter the latitude offset of 0.5
+
+The npz file contains: width, height, hgt_max, east, north, hgt
+Where:
+width is the width of the data in eastings (columns)
+height is the height of the data in northings (rows)
+hgt_max is the maximum altitude in the data
+east is the array of eastings
+north is the array of northings
+hgt is the array of altitudes
+
+UK data is converted to OSGB coordinates using WGS84toOSGB36
+Data for the rest of the World is converted to UTM
+
+The npz file can then be trimmed to our area of interest:
+python NPZ_Trim.py N27E086_join.npz 487000 496000 3091700 3100700
+(This trims the npz file to a 9km x 9km area centred on the Everest summit)
+(The trimming takes a long time - there must be a more efficent way of doing it!)
+
+The .npz file is then converted to .stl:
+python Dual_Color_NPZ_to_STL.py N27E086_join_trim.npz 87.5 90.0
+Enter 0.0 for the base offset and base thickness to create a true 1:100,000 scale print.
+You can save plastic by entering a base offset of -50.0.
+The code also creates a file called 'STL_Params.npz' which defines the size and scale of the landscape STL file so the GPX route STL can be created to the same size and scale.
+
+Dual_Color_GPX_to_STL.py then converts a GPX route for the same area into a separate STL file which can be printed in a second color:
+python Dual_Color_GPX_to_STL.py Everest_1953_Route.gpx n 2.0
+The GPX track/route points (lat and lon) are converted to UTM, then converted into a DXF file (arcs around each waypoint with lines between). OpenSCAD first converts the DXF file into a 2D solid and then linear_extrudes it to a height beyond the maximum in the landscape. Finally OpenSCAD calculates the difference (color 1) and intersection (color 2) between the landscape STL and the GPX STL. 
+
+OpenSCAD can be downloaded from http://www.openscad.org/downloads.html
+You will need to modify the string "openscad" in Dual_Color_GPX_to_STL.py if you install OpenSCAD anywhere other than
+C:\Program Files\OpenSCAD
+
+dxfwrite gratefully downloaded from https://pypi.python.org/pypi/dxfwrite/
+
+utm has been gratefully plagiarised from https://pypi.python.org/pypi/utm and then modified to allow the UTM zone to be forced. This is essential if the hgt data crosses or ends on a UTM zone boundary. See http://www.dmap.co.uk/utmworld.htm
+
+WGS84toOSGB36 is gratefully plagiarised from:
+http://hannahfry.co.uk/2012/02/01/converting-latitude-and-longitude-to-british-national-grid/
+
+This is an artistic project. If you are intending to climb Everest, you will need better maps and data than this! Please accept this for what it is: an approximation of the 1953 ascent of Everest.
+
+If you have enjoyed this code, please make a small donation to:
+http://himalayantrust.co.uk/donate/
+
+
